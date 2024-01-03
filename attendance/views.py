@@ -7,6 +7,7 @@ import xlrd
 from datetime import datetime
 from datetime import date, timedelta
 import random
+from django.urls import reverse
 
 def daterange(start_date, end_date):
     for n in range(int((end_date - start_date).days)+1):
@@ -28,7 +29,9 @@ WEEKDAYS={
     5:"S",
     6:"SU",   
 }
-
+DAYS_31=['01','03','05','07','08','10','12']
+DAYS_30=['04','06','09','11']
+DAYS_29=['02']
 def index(request): 
     return render(request,'index.html')
 def convert(request):
@@ -38,17 +41,22 @@ def convert(request):
         start_date=request.POST.get('startdate')
         end_date=request.POST.get('enddate')
         holiday_dates=request.POST.get('holidaydates')
+        month=request.POST.get('month')
+        print(month)
+        
         holiday_dates_list = holiday_dates.split(',')
         date_format = '%m/%d/%Y'
         
         no_of_holidays=0
         print(holiday_dates_list)
         holiday_dates=[]
+        
         for i in holiday_dates_list:
-            date=WEEKDAYS[datetime.strptime(i,date_format).weekday()]
-            if date!='SU':
-                no_of_holidays+=1
-                holiday_dates.append(str(datetime.strptime(i,date_format).day)+" "+str(date))
+            if i!='':
+                date=WEEKDAYS[datetime.strptime(i,date_format).weekday()]
+                if date!='SU':
+                    no_of_holidays+=1
+                    holiday_dates.append(str(datetime.strptime(i,date_format).day)+" "+str(date))
                 
                 
         no_of_sundays=0
@@ -65,10 +73,27 @@ def convert(request):
         available_days=[]
         available_days.append('Emp. Code')
         available_days.append(' NAME')
-        
-        for single_date in daterange(datetime.strptime(start_date,date_format), datetime.strptime(end_date,date_format)):
-            available_days.append(str(single_date.day)+" "+WEEKDAYS[int(single_date.weekday())])
-            
+        print(month[5:])
+        month_days=""
+        if month[5:] in DAYS_31:
+            month_days+="-31"
+            for single_date in daterange(datetime.strptime(str(month)+"-01",date_format), datetime.strptime(str(month)+"-31",date_format)):
+                available_days.append(str(single_date.day)+" "+WEEKDAYS[int(single_date.weekday())])
+        if month[5:] in DAYS_30:
+            month_days+="-30"
+            for single_date in daterange(datetime.strptime(str(month)+"-01",date_format), datetime.strptime(str(month)+"-30",date_format)):
+                available_days.append(str(single_date.day)+" "+WEEKDAYS[int(single_date.weekday())])
+        if month[5:] in DAYS_29:
+            month_days+="-29"
+            for single_date in daterange(datetime.strptime(str(month)+"-01",date_format), datetime.strptime(str(month)+"-29",date_format)):
+                available_days.append(str(single_date.day)+" "+WEEKDAYS[int(single_date.weekday())])        
+        available_days.append('P')
+        available_days.append('A')
+        available_days.append('L')
+        available_days.append('H') 
+        available_days.append('HP')
+        available_days.append('WO')
+        available_days.append('WOP')
         df.drop(df.columns[3:], axis=1, inplace=True)
         new_df=pd.DataFrame(columns=available_days)
         df=pd.concat([df,new_df])
@@ -81,21 +106,41 @@ def convert(request):
         num_col=len(col)
         print("No. of col",num_col)
         
+        unnecessary_days=[]
+        if abs(datetime.strptime(start_date,date_format)-datetime.strptime(str(month)+"-01",date_format))!=0:
+           for single_date in daterange(datetime.strptime(str(month)+"-01",date_format), datetime.strptime(start_date,date_format)):
+                unnecessary_days.append(str(single_date.day)+" "+WEEKDAYS[int(single_date.weekday())]) 
+           unnecessary_days.remove(str(datetime.strptime(start_date,date_format).day)+" "+WEEKDAYS[int(datetime.strptime(start_date,date_format).weekday())])
+           
+        if abs(datetime.strptime(end_date,date_format)-datetime.strptime(str(month+month_days),date_format))!=0:
+           for single_date in daterange(datetime.strptime(end_date,date_format), datetime.strptime(str(month+month_days),date_format)):
+                unnecessary_days.append(str(single_date.day)+" "+WEEKDAYS[int(single_date.weekday())]) 
+           unnecessary_days.remove(str(datetime.strptime(end_date,date_format).day)+" "+WEEKDAYS[int(datetime.strptime(end_date,date_format).weekday())])
+        # print(df)
         for i in range(0,num_rows):
             list_iterator=0
-            present_days=random.randrange(int(no_of_days*0.8),int(no_of_days*0.9))
+            present_days=random.randrange(int(no_of_days*0.8),int(no_of_days))
             present_days_list=distribute_attendance(present_days,no_of_days)
+            present_days_list.append(present_days_list.count('P'))
+            present_days_list.append(present_days_list.count('A'))
+            present_days_list.append(0)
+            present_days_list.append(no_of_holidays+no_of_sundays)
+            present_days_list.append(0)
+            present_days_list.append(0)
+            present_days_list.append(0)
+            
             for j in range(3,num_col):
-                if col[j][len(col[j])-1]=='U' or col[j] in holiday_dates:
+                if col[j][len(col[j])-1]=='U' or col[j] in holiday_dates or col[j] in unnecessary_days:
                     df.iloc[i,j] = '_'
                 else:   
                     # print(present_days_list[list_iterator])
                     # print(list_iterator)
                     df.iloc[i,j] = present_days_list[list_iterator]
                     list_iterator+=1
-        
+            
+            
         print(df)    
-        df.to_csv('output'+str(request.FILES['pdfFile']))   
+        df.to_csv('output'+str(request.FILES['pdfFile']),index=False)   
     return redirect('index')
 
 

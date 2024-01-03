@@ -110,7 +110,7 @@ body {
   color: #ffffff;
 } */
 #pdfFileInput{
-  background-color: #60efdb;
+  background-color: #3cd148;
   padding: 0.5rem;
   margin: 0.5rem;
   /* display: none; */
@@ -118,7 +118,18 @@ body {
   border-radius: 10px ;
   width: fit-content;
   font-family: 'Nunito';
-  border: 1px solid #000000;
+  border: 3px solid #ffffff;
+}
+#datePick{
+  background-color: #3cd148;
+  padding: 0.5rem;
+  margin: 0.5rem;
+  /* display: none; */
+  /* flex-direction: column; */
+  border-radius: 10px ;
+  width: fit-content;
+  font-family: 'Nunito';
+  border: 3px solid #ffffff;
 }
 #convertButton {
   background: #79ceee;
@@ -707,11 +718,12 @@ body {
     <form id="pdfForm" method="post" action="{% url 'convert' %}" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="file" class="file" id="pdfFileInput" name="pdfFile" placeholder="Click to choose file" style="font-family: Verdana, Geneva, Tahoma, sans-serif;">
-        <input type="date" name="startdate">
-        <input type="date" name="enddate">
+        <input type="date" name="startdate" id="pdfFileInput">
+        <input type="date" name="enddate" id="pdfFileInput">
         
-        <input type="text" id="datePick" name="holidaydates" />
- 
+        <input type="text" id="datePick" name="holidaydates" placeholder="holidays" />
+        <input type="month" name="month" id="pdfFileInput"/>
+        <input type="number" name="batch" placeholder="batch no." id="pdfFileInput"/>
         <script>
             $(document).ready(function () {
             $('#datePick').multiDatesPicker();
