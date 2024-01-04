@@ -8,7 +8,9 @@ from datetime import datetime
 from datetime import date, timedelta
 import random
 from django.urls import reverse
-
+import numpy as np
+import openpyxl
+import os
 def daterange(start_date, end_date):
     for n in range(int((end_date - start_date).days)+1):
         yield start_date + timedelta(n)
@@ -38,10 +40,13 @@ def convert(request):
     if request.method=='POST':
         df = pd.read_csv(request.FILES['pdfFile'])
         
-        start_date=request.POST.get('startdate')
-        end_date=request.POST.get('enddate')
-        holiday_dates=request.POST.get('holidaydates')
-        month=request.POST.get('month')
+        start_date = request.POST.get('startdate')
+        end_date = request.POST.get('enddate')
+        holiday_dates = request.POST.get('holidaydates')
+        month = request.POST.get('month')
+        batch = request.POST.get('batch')
+        batch_no=batch
+        batch = "BATCH "+str(batch)
         print(month)
         
         holiday_dates_list = holiday_dates.split(',')
@@ -71,8 +76,8 @@ def convert(request):
         no_of_days=abs((datetime.strptime(end_date,date_format).date()-datetime.strptime(start_date,date_format).date()).days)+1
         no_of_days=no_of_days-(no_of_sundays+no_of_holidays)
         available_days=[]
-        available_days.append('Emp. Code')
-        available_days.append(' NAME')
+        available_days.append('MAHAJYOTI KVY BATCH ID')
+        available_days.append('Student Name')
         print(month[5:])
         month_days=""
         if month[5:] in DAYS_31:
@@ -94,9 +99,12 @@ def convert(request):
         available_days.append('HP')
         available_days.append('WO')
         available_days.append('WOP')
-        df.drop(df.columns[3:], axis=1, inplace=True)
+        df = df[['BATCHWISE SR.NO.','MAHAJYOTI KVY BATCH ID', 'Student Name']]
         new_df=pd.DataFrame(columns=available_days)
         df=pd.concat([df,new_df])
+        df=df.loc[df['BATCHWISE SR.NO.'] == batch]
+
+
         num_rows = int(df.shape[0])
         
         print("No. of rows",num_rows)
@@ -119,7 +127,7 @@ def convert(request):
         # print(df)
         for i in range(0,num_rows):
             list_iterator=0
-            present_days=random.randrange(int(no_of_days*0.8),int(no_of_days))
+            present_days=random.randrange(int(no_of_days*0.85),int(no_of_days))
             present_days_list=distribute_attendance(present_days,no_of_days)
             present_days_list.append(present_days_list.count('P'))
             present_days_list.append(present_days_list.count('A'))
@@ -139,8 +147,17 @@ def convert(request):
                     list_iterator+=1
             
             
-        print(df)    
-        df.to_csv('output'+str(request.FILES['pdfFile']),index=False)   
+        print(df)
+        df=df.drop(columns=['BATCHWISE SR.NO.'])
+        df.index = np.arange(1, len(df)+1) 
+        path=r"output/"+"Batch_"+str(batch_no)+".xlsx"
+        
+        if os.path.isfile(path):
+            with pd.ExcelWriter(path=path, engine='openpyxl', mode='a') as writer:  
+                df.to_excel(writer,index=True,index_label='Sr.No.',sheet_name=str(start_date)+" to "+str(end_date))
+        else:
+            with pd.ExcelWriter(path=path, engine='openpyxl', mode='w') as writer:  
+                df.to_excel(writer,index=True,index_label='Sr.No.',sheet_name=str(start_date)+" to "+str(end_date))         
     return redirect('index')
 
 
